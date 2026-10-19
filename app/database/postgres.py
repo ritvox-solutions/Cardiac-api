@@ -26,10 +26,22 @@ async def connect_to_postgres() -> AsyncEngine:
     create_async_engine
     """
     global engine, async_session_maker
-    logger.info("Connecting to PostgreSQL ...")
+    url = settings.DATABASE_URL
+    # Ensure asyncpg driver is used even if standard postgresql:// URL is provided
+    if url.startswith("postgres://"):
+        url = "postgresql+asyncpg://" + url[len("postgres://"):]
+    elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+        url = "postgresql+asyncpg://" + url[len("postgresql://"):]
+
+    import re
+
+    # asyncpg expects ssl=... rather than sslmode=... and does not support channel_binding
+    if "sslmode=" in url:
+        url = url.replace("sslmode=require", "ssl=require").replace("sslmode=", "ssl=")
+    url = re.sub(r'[?&]channel_binding=[^&]+', '', url)
 
     engine = create_async_engine(
-        settings.DATABASE_URL,
+        url,
         echo=False,
         pool_size=5,
         max_overflow=10,
