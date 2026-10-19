@@ -134,5 +134,6 @@ async def root(request: Request) -> dict:
         "version": settings.APP_VERSION,
         "docs": "/docs",
         "scope_path": request.scope.get("path"),
+        "query_string": request.scope.get("query_string", b"").decode("utf-8", "ignore"),
         "headers": {k: v for k, v in request.headers.items() if "auth" not in k.lower()},
     }
