@@ -125,6 +125,8 @@ app.include_router(users.router)
 # Root redirect
 # ---------------------------------------------------------------------------
 
+@app.get("/api", include_in_schema=False)
+@app.get("/api/index.py", include_in_schema=False)
 @app.get("/", include_in_schema=False)
 async def root() -> dict:
     return {
