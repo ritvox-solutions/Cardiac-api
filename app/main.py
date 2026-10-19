@@ -83,6 +83,25 @@ app = FastAPI(
 )
 
 # ---------------------------------------------------------------------------
+# Vercel rewrite handler
+# ---------------------------------------------------------------------------
+
+@app.middleware("http")
+async def vercel_rewrite_middleware(request: Request, call_next):
+    """Restore original requested path from Vercel rewrite parameter."""
+    path_param = request.query_params.get("__path")
+    if path_param is not None:
+        corrected = "/" + path_param.lstrip("/")
+        request.scope["path"] = corrected
+        request.scope["raw_path"] = corrected.encode("utf-8")
+    elif request.scope.get("path") in ("/api/index.py", "/api"):
+        request.scope["path"] = "/"
+        request.scope["raw_path"] = b"/"
+
+    return await call_next(request)
+
+
+# ---------------------------------------------------------------------------
 # CORS
 # ---------------------------------------------------------------------------
 
@@ -93,6 +112,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 # ---------------------------------------------------------------------------
