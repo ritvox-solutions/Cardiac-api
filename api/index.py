@@ -2,6 +2,7 @@
 
 import os
 import sys
+from urllib.parse import parse_qs, urlencode
 
 # Ensure backend root is on python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -12,31 +13,25 @@ from app.main import app as fastapi_app  # noqa: E402
 async def app(scope, receive, send):
     """ASGI wrapper to correct request path rewritten by Vercel."""
     if scope["type"] in ("http", "websocket"):
-        headers = dict(scope.get("headers", []))
+        raw_qs = scope.get("query_string", b"").decode("utf-8")
+        params = parse_qs(raw_qs, keep_blank_values=True)
 
-        # Check for original client path in Vercel edge proxy headers
-        original_path = None
-        for header_key in (b"x-matched-path", b"x-forwarded-uri", b"x-original-uri"):
-            if header_key in headers:
-                val = headers[header_key].decode("utf-8")
-                # Ignore if it points directly to the rewritten lambda file
-                if not val.startswith("/api/index.py"):
-                    original_path = val.split("?")[0]
-                    break
-
-        if original_path:
-            scope["path"] = original_path
-            scope["raw_path"] = original_path.encode("utf-8")
+        if "__path" in params:
+            p = params.pop("__path")[0]
+            corrected_path = "/" + p.lstrip("/")
+            scope["path"] = corrected_path
+            scope["raw_path"] = corrected_path.encode("utf-8")
+            remaining_qs = urlencode(params, doseq=True)
+            scope["query_string"] = remaining_qs.encode("utf-8")
         else:
-            # Strip rewrite destination prefixes if passed as request path
-            path = scope.get("path", "")
-            if path.startswith("/api/index.py"):
-                stripped = path[len("/api/index.py"):]
-                scope["path"] = stripped if stripped.startswith("/") else ("/" + stripped if stripped else "/")
-                scope["raw_path"] = scope["path"].encode("utf-8")
-            elif path.startswith("/api/") and not path.startswith("/api/routes"):
-                stripped = path[len("/api"):]
-                scope["path"] = stripped
-                scope["raw_path"] = stripped.encode("utf-8")
+            headers = dict(scope.get("headers", []))
+            for hk in (b"x-matched-path", b"x-forwarded-uri", b"x-original-uri"):
+                if hk in headers:
+                    val = headers[hk].decode("utf-8")
+                    if not val.startswith("/api/index.py") and not val.startswith("/api/"):
+                        path = val.split("?")[0]
+                        scope["path"] = "/" + path.lstrip("/")
+                        scope["raw_path"] = scope["path"].encode("utf-8")
+                        break
 
     await fastapi_app(scope, receive, send)

@@ -128,9 +128,11 @@ app.include_router(users.router)
 @app.get("/api", include_in_schema=False)
 @app.get("/api/index.py", include_in_schema=False)
 @app.get("/", include_in_schema=False)
-async def root() -> dict:
+async def root(request: Request) -> dict:
     return {
         "application": settings.APP_NAME,
         "version": settings.APP_VERSION,
         "docs": "/docs",
+        "scope_path": request.scope.get("path"),
+        "headers": {k: v for k, v in request.headers.items() if "auth" not in k.lower()},
     }
