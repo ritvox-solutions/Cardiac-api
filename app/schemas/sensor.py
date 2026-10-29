@@ -9,7 +9,9 @@ class SensorDataInput(BaseModel):
     """Live sensor reading received from the ESP32 wearable device."""
 
     user_id: str = Field(..., description="Unique patient identifier")
-    heart_rate: int = Field(..., ge=40, le=190)
+    # Transport readings must allow emergency bradycardia.  The ML endpoint
+    # keeps its narrower model-safe range in PredictionInput.
+    heart_rate: int = Field(..., ge=20, le=250)
     spo2: float = Field(..., ge=75, le=100)
     heart_rate_variability: int = Field(..., ge=10, le=130)
     activity_level: str | None = None

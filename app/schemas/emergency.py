@@ -9,7 +9,8 @@ class EmergencyAlertInput(BaseModel):
     """Payload for triggering an emergency alert (from the mobile app)."""
 
     user_id: str
-    heart_rate: int | None = Field(None, ge=40, le=190)
+    # Keep values below 40 valid so the documented bradycardia rule can fire.
+    heart_rate: int | None = Field(None, ge=20, le=250)
     spo2: float | None = Field(None, ge=75, le=100)
     latitude: float | None = None
     longitude: float | None = None

@@ -5,7 +5,9 @@ All environment-sensitive values are loaded from a ``.env`` file
 """
 
 from pathlib import Path
+from typing import Any
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -16,6 +18,15 @@ class Settings(BaseSettings):
     APP_NAME: str = "Wearable Cardiac Risk Monitoring API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
+
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def parse_debug(cls, v: Any) -> bool:
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            return v.strip().lower() in ("true", "1", "yes", "debug", "dev", "development")
+        return bool(v)
 
     # ---- Server ------------------------------------------------------------
     HOST: str = "0.0.0.0"
