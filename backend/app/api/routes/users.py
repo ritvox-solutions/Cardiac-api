@@ -5,7 +5,7 @@ Provides endpoints to create, fetch, and update patient demographic profiles.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.dependencies import get_user_service
+from app.api.dependencies import get_current_user_id, get_user_service, require_user
 from app.core.logger import setup_logger
 from app.schemas.user import UserProfileInput, UserProfileOutput
 from app.services.user_service import UserService
@@ -24,8 +24,10 @@ router = APIRouter(prefix="/users", tags=["Users"])
 async def upsert_user_profile(
     payload: UserProfileInput,
     user_service: UserService = Depends(get_user_service),
+    current_user_id: str = Depends(get_current_user_id),
 ) -> UserProfileOutput:
     """Save or update user demographic profile."""
+    require_user(payload.user_id, current_user_id)
     try:
         user = await user_service.upsert_user(payload)
         return UserProfileOutput(
@@ -59,8 +61,10 @@ async def upsert_user_profile(
 async def get_user_profile(
     user_id: str,
     user_service: UserService = Depends(get_user_service),
+    current_user_id: str = Depends(get_current_user_id),
 ) -> UserProfileOutput:
     """Retrieve user demographic profile."""
+    require_user(user_id, current_user_id)
     user = await user_service.get_user(user_id)
     if not user:
         raise HTTPException(

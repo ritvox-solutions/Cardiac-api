@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db_session, get_sensor_service
+from app.api.dependencies import get_current_user_id, get_db_session, get_sensor_service, require_user
 from app.core.logger import setup_logger
 from app.models.postgres_models import UserORM
 from app.schemas.sensor import SensorDataInput, SensorDataOutput
@@ -33,8 +33,10 @@ async def store_sensor_data(
     payload: SensorDataInput,
     sensor_service: SensorService = Depends(get_sensor_service),
     session: AsyncSession = Depends(get_db_session),
+    current_user_id: str = Depends(get_current_user_id),
 ) -> SensorDataOutput:
     """Store a sensor reading and return a prediction."""
+    require_user(payload.user_id, current_user_id)
     user_profile = None
     try:
         result = await session.execute(

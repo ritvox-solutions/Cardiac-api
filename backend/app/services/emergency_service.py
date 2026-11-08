@@ -87,11 +87,11 @@ class EmergencyService:
         rows = result.scalars().all()
         return [_alert_to_dict(r) for r in rows]
 
-    async def resolve_alert(self, alert_id: int) -> bool:
-        """Mark an alert as resolved."""
+    async def resolve_alert(self, alert_id: int, user_id: str) -> bool:
+        """Mark one of the authenticated user's alerts as resolved."""
         await self._session.execute(
             update(AlertORM)
-            .where(AlertORM.id == alert_id)
+            .where(AlertORM.id == alert_id, AlertORM.user_id == user_id)
             .values(status="resolved")
         )
         await self._session.commit()
@@ -122,9 +122,12 @@ class EmergencyService:
         await self._session.refresh(contact)
         return contact
 
-    async def remove_contact(self, contact_id: int) -> bool:
-        """Delete an emergency contact by ID."""
-        stmt = delete(EmergencyContactORM).where(EmergencyContactORM.id == contact_id)
+    async def remove_contact(self, contact_id: int, user_id: str) -> bool:
+        """Delete one of the authenticated user's emergency contacts."""
+        stmt = delete(EmergencyContactORM).where(
+            EmergencyContactORM.id == contact_id,
+            EmergencyContactORM.user_id == user_id,
+        )
         await self._session.execute(stmt)
         await self._session.commit()
         return True

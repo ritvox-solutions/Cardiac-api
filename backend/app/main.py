@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.dependencies import get_prediction_service
-from app.api.routes import dashboard, emergency, health, prediction, sensor, users
+from app.api.routes import auth, dashboard, emergency, health, prediction, sensor, users
 from app.core.config import settings
 from app.core.logger import setup_logger
 from app.database.postgres import close_postgres, connect_to_postgres, engine
@@ -134,6 +134,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 # ---------------------------------------------------------------------------
 
 app.include_router(health.router)
+app.include_router(auth.router)
 app.include_router(prediction.router)
 app.include_router(sensor.router)
 app.include_router(dashboard.router)

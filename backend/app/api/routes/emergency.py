@@ -6,7 +6,7 @@ and manage emergency contacts in PostgreSQL.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.dependencies import get_emergency_service
+from app.api.dependencies import get_current_user_id, get_emergency_service, require_user
 from app.core.logger import setup_logger
 from app.schemas.emergency import (
     EmergencyAlertInput,
@@ -30,8 +30,10 @@ router = APIRouter(prefix="/emergency", tags=["Emergency"])
 async def create_emergency_alert(
     payload: EmergencyAlertInput,
     emergency: EmergencyService = Depends(get_emergency_service),
+    current_user_id: str = Depends(get_current_user_id),
 ) -> EmergencyAlertOutput:
     """Create and persist an emergency alert."""
+    require_user(payload.user_id, current_user_id)
     try:
         result = await emergency.create_alert(payload)
     except Exception as exc:
@@ -59,8 +61,10 @@ async def get_user_alerts(
     user_id: str,
     limit: int = 20,
     emergency: EmergencyService = Depends(get_emergency_service),
+    current_user_id: str = Depends(get_current_user_id),
 ) -> list[dict]:
     """Retrieve alerts history for a user."""
+    require_user(user_id, current_user_id)
     return await emergency.get_user_alerts(user_id=user_id, limit=limit)
 
 
@@ -73,9 +77,10 @@ async def get_user_alerts(
 async def resolve_emergency_alert(
     alert_id: int,
     emergency: EmergencyService = Depends(get_emergency_service),
+    current_user_id: str = Depends(get_current_user_id),
 ) -> dict:
     """Resolve an active emergency alert."""
-    await emergency.resolve_alert(alert_id)
+    await emergency.resolve_alert(alert_id, current_user_id)
     return {"id": alert_id, "status": "resolved"}
 
 
@@ -88,8 +93,10 @@ async def resolve_emergency_alert(
 async def get_emergency_contacts(
     user_id: str,
     emergency: EmergencyService = Depends(get_emergency_service),
+    current_user_id: str = Depends(get_current_user_id),
 ) -> list[EmergencyContactOutput]:
     """Get emergency contacts for user."""
+    require_user(user_id, current_user_id)
     contacts = await emergency.get_user_contacts(user_id)
     return [
         EmergencyContactOutput(
@@ -115,8 +122,10 @@ async def get_emergency_contacts(
 async def add_emergency_contact(
     payload: EmergencyContactInput,
     emergency: EmergencyService = Depends(get_emergency_service),
+    current_user_id: str = Depends(get_current_user_id),
 ) -> EmergencyContactOutput:
     """Add emergency contact."""
+    require_user(payload.user_id, current_user_id)
     try:
         contact = await emergency.add_contact(payload)
         return EmergencyContactOutput(
@@ -145,7 +154,8 @@ async def add_emergency_contact(
 async def remove_emergency_contact(
     contact_id: int,
     emergency: EmergencyService = Depends(get_emergency_service),
+    current_user_id: str = Depends(get_current_user_id),
 ) -> dict:
     """Remove emergency contact."""
-    await emergency.remove_contact(contact_id)
+    await emergency.remove_contact(contact_id, current_user_id)
     return {"deleted": True, "id": contact_id}

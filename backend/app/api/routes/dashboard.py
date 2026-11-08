@@ -6,7 +6,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.dependencies import get_dashboard_service
+from app.api.dependencies import get_current_user_id, get_dashboard_service, require_user
 from app.core.logger import setup_logger
 from app.schemas.dashboard import DashboardResponse, HistoryResponse
 from app.services.dashboard_service import DashboardService
@@ -27,8 +27,10 @@ router = APIRouter(tags=["Dashboard"])
 async def get_dashboard(
     user_id: str,
     dashboard: DashboardService = Depends(get_dashboard_service),
+    current_user_id: str = Depends(get_current_user_id),
 ) -> DashboardResponse:
     """Aggregate dashboard data for a single user."""
+    require_user(user_id, current_user_id)
     try:
         result = await dashboard.get_dashboard(user_id)
     except Exception as exc:
@@ -55,8 +57,10 @@ async def get_history(
     user_id: str,
     period: str = Query("week", pattern="^(day|week|month)$"),
     dashboard: DashboardService = Depends(get_dashboard_service),
+    current_user_id: str = Depends(get_current_user_id),
 ) -> HistoryResponse:
     """Fetch historical sensor readings within a time window."""
+    require_user(user_id, current_user_id)
     try:
         result = await dashboard.get_history(user_id, period)
     except Exception as exc:

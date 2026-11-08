@@ -5,7 +5,8 @@ Provides reusable dependencies for database and service injection.
 
 from typing import AsyncGenerator
 
-from fastapi import Depends, Request
+from fastapi import Depends, HTTPException, Request
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.postgres import get_db
@@ -14,6 +15,9 @@ from app.services.emergency_service import EmergencyService
 from app.services.prediction_service import PredictionService
 from app.services.sensor_service import SensorService
 from app.services.user_service import UserService
+from app.core.security import decode_access_token
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 # ---------------------------------------------------------------------------
@@ -73,3 +77,14 @@ def get_client_host(request: Request) -> str:
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
+
+
+def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
+    """Return the user id represented by the bearer token."""
+    return decode_access_token(token)
+
+
+def require_user(user_id: str, current_user_id: str) -> None:
+    """Reject access to another user's resources."""
+    if user_id != current_user_id:
+        raise HTTPException(status_code=403, detail="You cannot access another user's data")
