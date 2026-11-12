@@ -14,7 +14,6 @@ import LoginScreen from '../screens/Auth/Login';
 import RegisterScreen from '../screens/Auth/Register';
 import DashboardScreen from '../screens/Dashboard';
 import LiveMonitoringScreen from '../screens/LiveMonitoring';
-import PredictionScreen from '../screens/Prediction';
 import HistoryScreen from '../screens/History';
 import EmergencyScreen from '../screens/Emergency';
 import SettingsScreen from '../screens/Settings';
@@ -38,7 +37,6 @@ export type AuthStackParamList = {
 export type MainTabParamList = {
   Dashboard: undefined;
   LiveMonitoring: undefined;
-  Prediction: undefined;
   History: undefined;
   Emergency: { alertId?: string; autoStart?: boolean } | undefined;
   Settings: undefined;
@@ -51,7 +49,6 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 const TAB_ICONS: Record<keyof MainTabParamList, keyof typeof MaterialCommunityIcons.glyphMap> = {
   Dashboard: 'view-dashboard',
   LiveMonitoring: 'heart-pulse',
-  Prediction: 'chart-line',
   History: 'history',
   Emergency: 'alert-decagram',
   Settings: 'cog',
@@ -71,7 +68,6 @@ function withScreenBoundary<P extends object>(Screen: React.ComponentType<P>): R
 
 const DashboardWithBoundary = withScreenBoundary(DashboardScreen);
 const LiveMonitoringWithBoundary = withScreenBoundary(LiveMonitoringScreen);
-const PredictionWithBoundary = withScreenBoundary(PredictionScreen);
 const HistoryWithBoundary = withScreenBoundary(HistoryScreen);
 const EmergencyWithBoundary = withScreenBoundary(EmergencyScreen);
 const SettingsWithBoundary = withScreenBoundary(SettingsScreen);
@@ -113,7 +109,6 @@ const MainTabs: React.FC = () => {
     >
       <Tab.Screen name="Dashboard" component={DashboardWithBoundary} />
       <Tab.Screen name="LiveMonitoring" component={LiveMonitoringWithBoundary} />
-      <Tab.Screen name="Prediction" component={PredictionWithBoundary} />
       <Tab.Screen name="History" component={HistoryWithBoundary} />
       <Tab.Screen
         name="Emergency"

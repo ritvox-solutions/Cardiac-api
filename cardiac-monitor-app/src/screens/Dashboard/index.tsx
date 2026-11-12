@@ -17,6 +17,7 @@ import {
 } from '../../services/crisisSimulator';
 import { Card, MetricTile, Loader, ErrorMessage, ScreenHeader } from '../../components/common';
 import { RiskBadge, DcsiGauge } from '../../components/dashboard';
+import { HeartRateChart } from '../../components/charts';
 import { Colors, Spacing, FontSize, FontWeight, BorderRadius } from '../../theme';
 import { formatHeartRate, formatSpO2, getHeartRateColor, getSpO2Color } from '../../utils';
 import type { MainTabParamList } from '../../navigation/AppNavigator';
@@ -53,6 +54,7 @@ const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<MainTabParamList>>();
   const {
     currentSensorData,
+    vitalsLog,
     currentPrediction,
     currentDcsi,
     setCurrentSensorData,
@@ -364,6 +366,17 @@ const DashboardScreen: React.FC = () => {
               size="md"
             />
           </View>
+        )}
+
+        {vitalsLog.length >= 2 && (
+          <HeartRateChart
+            data={vitalsLog.map((reading) => ({
+              value: reading.heartRate,
+              timestamp: reading.timestamp,
+            }))}
+            title="Heart Rate Trend"
+            color={Colors.destructive}
+          />
         )}
 
         {currentDcsi && (

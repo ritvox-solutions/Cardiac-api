@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { Card, Loader, ErrorMessage, ErrorBoundary, ScreenHeader } from '../../c
 import { HeartRateChart, DcsiChart } from '../../components/charts';
 import { Colors, Spacing, FontSize, BorderRadius, Shadow } from '../../theme';
 import type { SensorData, Dcsi } from '../../types';
+import { useAppStore } from '../../store/useAppStore';
 
 type TabType = 'vitals' | 'dcsi';
 
@@ -17,6 +18,17 @@ const HistoryScreen: React.FC = () => {
   const [dcsiHistory, setDcsiHistory] = useState<Dcsi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const liveReadings = useAppStore((state) => state.vitalsLog);
+
+  const chartReadings = useMemo(() => {
+    const byTimestamp = new Map<string, SensorData>();
+    [...sensorHistory, ...liveReadings].forEach((reading) => {
+      byTimestamp.set(reading.timestamp, reading);
+    });
+    return [...byTimestamp.values()]
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      .slice(-50);
+  }, [liveReadings, sensorHistory]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -92,14 +104,14 @@ const HistoryScreen: React.FC = () => {
           {activeTab === 'vitals' && (
             <>
               <HeartRateChart
-                data={sensorHistory.map((s) => ({
+                data={chartReadings.map((s) => ({
                   value: s.heartRate,
                   timestamp: s.timestamp,
                 }))}
                 title="Heart Rate History"
               />
               <HeartRateChart
-                data={sensorHistory.map((s) => ({
+                data={chartReadings.map((s) => ({
                   value: s.spo2,
                   timestamp: s.timestamp,
                 }))}

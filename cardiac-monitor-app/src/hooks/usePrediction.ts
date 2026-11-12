@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import * as Location from 'expo-location';
 import { useAppStore } from '../store/useAppStore';
 import { PredictionService } from '../services/bluetooth';
-import { sendAutomaticSms } from '../services/nativeSms';
+import { getSmsRecipients, sendAutomaticSmsToContacts } from '../services/nativeSms';
 import { getEmergencyContacts, triggerEmergencyAlert } from '../services/api/emergency';
 import type { Dcsi, Prediction, SensorData } from '../types';
 
@@ -111,11 +111,11 @@ export function usePrediction() {
           console.warn('Emergency event could not be logged:', error);
         }
 
-        const results = await Promise.allSettled(
-          recipients.map((contact) => sendAutomaticSms(contact.phone, message)),
+        const smsResult = await sendAutomaticSmsToContacts(
+          getSmsRecipients(recipients.map((contact) => contact.phone)),
+          message,
         );
-        const sentCount = results.filter((result) => result.status === 'fulfilled').length;
-        if (sentCount === 0) {
+        if (smsResult.sentCount === 0) {
           throw new Error('The emergency SMS could not be sent to any contact.');
         }
         lastAlertAtRef.current = now;

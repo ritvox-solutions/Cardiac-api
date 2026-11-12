@@ -2,7 +2,7 @@ import * as Location from 'expo-location';
 import { useAppStore } from '../store/useAppStore';
 import { requestPrediction } from './api/prediction';
 import { triggerEmergencyAlert, getEmergencyContacts } from './api/emergency';
-import { sendAutomaticSms } from './nativeSms';
+import { getSmsRecipients, sendAutomaticSmsToContacts } from './nativeSms';
 import { bluetoothManager } from './bluetooth';
 import type { EmergencyAlert, BLESensorData } from '../types';
 
@@ -236,23 +236,20 @@ export async function simulateAutonomousSos(
 
   // 3. Resolve emergency recipient
   const currentState = useAppStore.getState();
-  let recipient =
-    currentState.sosContactNumber?.trim() ||
-    currentState.user?.emergencyContacts[0]?.phone;
-
-  if (!recipient || recipient.includes('555-0124') || recipient.includes('555-0125') || recipient.startsWith('+1555')) {
-    try {
-      const contacts = await getEmergencyContacts();
-      const realContact = contacts.find((c) => !c.phone.includes('555'));
-      if (realContact) {
-        recipient = realContact.phone;
-      }
-    } catch {
-      // ignore
-    }
+  let contacts = currentState.user?.emergencyContacts ?? [];
+  try {
+    contacts = [...contacts, ...(await getEmergencyContacts())];
+  } catch {
+    // Use locally cached contacts when the backend is unavailable.
   }
+  const recipients = getSmsRecipients([
+    currentState.sosContactNumber,
+    ...contacts.map((contact) => contact.phone),
+  ]).filter(
+    (phone) => !phone.includes('5550124') && !phone.includes('5550125') && !phone.startsWith('+1555'),
+  );
 
-  if (!recipient || recipient.includes('555-0124') || recipient.includes('555-0125') || recipient.startsWith('+1555')) {
+  if (recipients.length === 0) {
     throw new Error(
       'Please set your real phone number in Emergency screen or Settings. Test dummy numbers (+1-555-0124) cannot receive SMS.',
     );
@@ -282,7 +279,10 @@ export async function simulateAutonomousSos(
   const smsMessage = `EMERGENCY ALERT: ${patientName} is in critical condition.\nHR: ${finalHr} BPM | SpO2: ${finalSpo2}% | Risk: ${latestRiskScore}/100\nLocation: ${locationUrl}`;
 
   // 5. Send real SMS via Android SIM
-  await sendAutomaticSms(recipient, smsMessage);
+  const smsResult = await sendAutomaticSmsToContacts(recipients, smsMessage);
+  if (smsResult.sentCount === 0) {
+    throw new Error('The emergency SMS could not be sent to any contact.');
+  }
 
   // 6. Record alert in backend database
   let alertRecord: EmergencyAlert | undefined;
@@ -300,7 +300,7 @@ export async function simulateAutonomousSos(
 
   return {
     success: true,
-    recipient,
+    recipient: recipients.join(', '),
     locationUrl,
     heartRate: finalHr,
     spo2: finalSpo2,

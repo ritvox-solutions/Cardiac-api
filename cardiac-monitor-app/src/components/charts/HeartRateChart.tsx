@@ -17,7 +17,8 @@ const HeartRateChart: React.FC<HeartRateChartProps> = ({
   color = Colors.primary,
   showDots = true,
 }) => {
-  const screenWidth = Dimensions.get('window').width - Spacing.lg * 2;
+  // Account for the screen gutter and the chart card's horizontal padding.
+  const screenWidth = Dimensions.get('window').width - Spacing.lg * 2 - Spacing.md * 2;
 
   // Drop points the chart library can't plot (NaN / Infinity / non-numbers)
   const points = data

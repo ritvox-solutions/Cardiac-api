@@ -6,6 +6,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { useBluetooth } from '../../hooks/useBluetooth';
 import { Card, MetricTile, ScreenHeader } from '../../components/common';
 import { RiskBadge } from '../../components/dashboard';
+import { HeartRateChart } from '../../components/charts';
 import { Colors, Spacing, FontSize, FontWeight, BorderRadius, Shadow } from '../../theme';
 import { getHeartRateColor, getSpO2Color } from '../../utils';
 
@@ -38,7 +39,7 @@ const STATUS_ICON: Record<string, keyof typeof MaterialCommunityIcons.glyphMap> 
 
 const LiveMonitoringScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { currentPrediction, predictionStatus, predictionError } = useAppStore();
+  const { currentPrediction, predictionStatus, predictionError, vitalsLog } = useAppStore();
   const {
     bleStatus,
     bleDeviceName,
@@ -214,6 +215,27 @@ const LiveMonitoringScreen: React.FC = () => {
               </Text>
             </Card>
           )
+        )}
+
+        {vitalsLog.length >= 2 && (
+          <>
+            <HeartRateChart
+              data={vitalsLog.map((reading) => ({
+                value: reading.heartRate,
+                timestamp: reading.timestamp,
+              }))}
+              title="Heart Rate Trend"
+              color={Colors.destructive}
+            />
+            <HeartRateChart
+              data={vitalsLog.map((reading) => ({
+                value: reading.spo2,
+                timestamp: reading.timestamp,
+              }))}
+              title="SpO₂ Trend"
+              color={Colors.primary}
+            />
+          </>
         )}
       </ScrollView>
     </View>

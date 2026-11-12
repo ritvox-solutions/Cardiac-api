@@ -8,11 +8,13 @@ import { ErrorBoundary } from './src/components/common';
 import { PaperThemeLight, PaperThemeDark } from './src/theme';
 import { USE_MOCK_DATA } from './src/constants';
 import { mockSensorService } from './src/services/mock/mockSensorService';
+import { requestSmsPermissionOnFirstLaunch } from './src/services/nativeSms';
 
 const ThemedApp: React.FC = () => {
   const { isDarkMode } = useAppContext();
 
   React.useEffect(() => {
+    void requestSmsPermissionOnFirstLaunch();
     if (USE_MOCK_DATA) {
       mockSensorService.start();
     }

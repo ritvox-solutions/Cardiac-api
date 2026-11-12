@@ -16,7 +16,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAppStore } from '../../store/useAppStore';
 import {
-  sendAutomaticSms,
+  sendAutomaticSmsToContacts,
+  getSmsRecipients,
   checkSmsPermission,
   requestSmsPermission,
   openAppSettings,
@@ -146,10 +147,12 @@ const EmergencyScreen: React.FC = () => {
 
   const handleSOS = async () => {
     const { sosContactNumber: currentSos, user: currentUser, bleSensorData } = useAppStore.getState();
-    const recipient =
-      currentSos?.trim() ||
-      currentUser?.emergencyContacts?.[0]?.phone ||
-      contacts[0]?.phone;
+    const recipientPhones = getSmsRecipients([
+      currentSos,
+      ...(currentUser?.emergencyContacts ?? []).map((contact) => contact.phone),
+      ...contacts.map((contact) => contact.phone),
+    ]);
+    const recipient = recipientPhones[0];
 
     const isDummy =
       !recipient ||
@@ -173,7 +176,7 @@ const EmergencyScreen: React.FC = () => {
 
     Alert.alert(
       'Send Emergency Alert',
-      `This will text your emergency contact (${recipient}) with your current location.`,
+        `This will text ${recipientPhones.length} emergency contact${recipientPhones.length === 1 ? '' : 's'} with your current location.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -206,8 +209,17 @@ const EmergencyScreen: React.FC = () => {
 
               // Send the SMS first — it must not depend on the backend being up.
               try {
-                await sendAutomaticSms(recipient, message);
-                Alert.alert('Alert Sent', `Emergency SMS sent to ${recipient}.`);
+                const smsResult = await sendAutomaticSmsToContacts(recipientPhones, message);
+                if (smsResult.sentCount === 0) {
+                  throw new Error('The emergency SMS could not be sent to any contact.');
+                }
+                const failedSuffix = smsResult.failedNumbers.length
+                  ? ` ${smsResult.failedNumbers.length} contact(s) failed.`
+                  : '';
+                Alert.alert(
+                  'Alert Sent',
+                  `Emergency SMS sent to ${smsResult.sentCount} contact(s).${failedSuffix}`,
+                );
               } catch (smsError) {
                 console.warn('Emergency SMS sending error:', smsError);
                 Alert.alert(
@@ -217,7 +229,7 @@ const EmergencyScreen: React.FC = () => {
                     { text: 'Cancel', style: 'cancel' },
                     {
                       text: 'Open SMS App',
-                      onPress: () => openNativeSmsApp(recipient, message),
+                      onPress: () => openNativeSmsApp(recipientPhones[0], message),
                     },
                   ],
                 );
@@ -251,18 +263,18 @@ const EmergencyScreen: React.FC = () => {
 
   const handleRunAutonomousDemo = useCallback(async () => {
     const { sosContactNumber: currentSos, user: currentUser } = useAppStore.getState();
-    const recipient =
-      currentSos?.trim() ||
-      currentUser?.emergencyContacts?.[0]?.phone ||
-      contacts[0]?.phone;
-
-    const isDummy =
-      !recipient ||
-      recipient.includes('555-0124') ||
-      recipient.includes('555-0125') ||
-      recipient.includes('5550124') ||
-      recipient.includes('+1555') ||
-      recipient.replace(/[^0-9]/g, '').length < 7;
+    const demoRecipients = getSmsRecipients([
+      currentSos,
+      ...(currentUser?.emergencyContacts ?? []).map((contact) => contact.phone),
+      ...contacts.map((contact) => contact.phone),
+    ]);
+    const isDummy = !demoRecipients.some(
+      (phone) =>
+        !phone.includes('5550124') &&
+        !phone.includes('5550125') &&
+        !phone.startsWith('+1555') &&
+        phone.replace(/[^0-9]/g, '').length >= 7,
+    );
 
     if (isDummy) {
       Alert.alert(

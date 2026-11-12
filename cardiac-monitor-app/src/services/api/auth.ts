@@ -17,11 +17,30 @@ export interface RegisterRequest {
 }
 
 export async function login(data: LoginRequest): Promise<AuthResponse> {
-  return mockApi.auth.login(data);
+  const response = await apiClient.post(API_ENDPOINTS.LOGIN, data);
+  return mapAuthResponse(response.data);
 }
 
 export async function register(data: RegisterRequest): Promise<AuthResponse> {
-  return mockApi.auth.register(data);
+  const response = await apiClient.post(API_ENDPOINTS.REGISTER, data);
+  return mapAuthResponse(response.data);
+}
+
+function mapAuthResponse(data: {
+  token: string;
+  user: { id: string; name: string; email: string; created_at: string };
+}): AuthResponse {
+  return {
+    token: data.token,
+    user: {
+      id: data.user.id,
+      name: data.user.name,
+      email: data.user.email,
+      emergencyContacts: [],
+      healthProfile: null,
+      createdAt: data.user.created_at,
+    },
+  };
 }
 
 export async function getProfile(): Promise<User> {

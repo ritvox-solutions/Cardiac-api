@@ -4,6 +4,8 @@ export const USE_MOCK_DATA = false;
 
 export const API_ENDPOINTS = {
   HEALTH: '/health',
+  LOGIN: '/auth/login',
+  REGISTER: '/auth/register',
   PREDICT: '/predict',
   SENSOR_DATA: '/sensor-data',
   DASHBOARD: (userId: string) => `/dashboard/${userId}`,

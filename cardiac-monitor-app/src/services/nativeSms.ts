@@ -1,4 +1,5 @@
 import { NativeModules, PermissionsAndroid, Platform, Linking } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface SmsNativeModule {
   sendSms(phoneNumber: string, message: string): Promise<boolean>;
@@ -6,6 +7,33 @@ interface SmsNativeModule {
 }
 
 const smsModule = NativeModules.SmsModule as SmsNativeModule | undefined;
+const SMS_PERMISSION_PROMPTED_KEY = '@cardiac_monitor_sms_permission_prompted';
+
+/** Normalize and deduplicate configured SMS recipients. */
+export function getSmsRecipients(numbers: Array<string | undefined | null>): string[] {
+  return [...new Set(
+    numbers
+      .map((number) => number?.trim().replace(/[^0-9+]/g, ''))
+      .filter((number): number is string => typeof number === 'string' && number.length >= 5),
+  )];
+}
+
+/** Send one emergency message to every recipient and report partial failures. */
+export async function sendAutomaticSmsToContacts(
+  phoneNumbers: string[],
+  message: string,
+): Promise<{ sentCount: number; failedNumbers: string[] }> {
+  const recipients = getSmsRecipients(phoneNumbers);
+  const results = await Promise.allSettled(
+    recipients.map((phoneNumber) => sendAutomaticSms(phoneNumber, message)),
+  );
+  return {
+    sentCount: results.filter((result) => result.status === 'fulfilled').length,
+    failedNumbers: results.flatMap((result, index) =>
+      result.status === 'rejected' ? [recipients[index]] : [],
+    ),
+  };
+}
 
 /** Checks if SEND_SMS permission is currently granted by the user. */
 export async function checkSmsPermission(): Promise<boolean> {
@@ -35,6 +63,22 @@ export async function requestSmsPermission(): Promise<boolean> {
     return status === PermissionsAndroid.RESULTS.GRANTED;
   } catch (error) {
     console.warn('Failed to request SMS permission:', error);
+    return false;
+  }
+}
+
+/** Prompt once on first app launch so emergency SMS permission is not delayed. */
+export async function requestSmsPermissionOnFirstLaunch(): Promise<boolean> {
+  if (Platform.OS !== 'android') return true;
+
+  try {
+    const alreadyPrompted = await AsyncStorage.getItem(SMS_PERMISSION_PROMPTED_KEY);
+    if (alreadyPrompted === 'true') return checkSmsPermission();
+
+    await AsyncStorage.setItem(SMS_PERMISSION_PROMPTED_KEY, 'true');
+    return requestSmsPermission();
+  } catch (error) {
+    console.warn('Failed to prepare SMS permission prompt:', error);
     return false;
   }
 }

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { mockApi } from '../services/mock';
+import { login as apiLogin, register as apiRegister } from '../services/api/auth';
 import { updateHealthProfile as syncHealthProfile } from '../services/api/auth';
 import type { LoginForm, RegisterForm } from '../utils/validation';
 import type { HealthProfile } from '../types';
@@ -18,7 +18,7 @@ export function useAuth() {
     setLoading(true);
     setError(null);
     try {
-      const response = await mockApi.auth.login(data);
+      const response = await apiLogin(data);
       // The mock backend has no real account system — every credential pair
       // resolves to the same demo user. Keep whatever profile is already
       // persisted for that user instead of overwriting it with the mock's
@@ -40,7 +40,7 @@ export function useAuth() {
     setLoading(true);
     setError(null);
     try {
-      const response = await mockApi.auth.register({
+      const response = await apiRegister({
         name: data.name,
         email: data.email,
         password: data.password,
